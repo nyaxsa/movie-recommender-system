@@ -8,21 +8,36 @@ import requests
 
 if not os.path.exists("similarity.pkl"):
     file_id = "14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
     session = requests.Session()
+
+    # First request to get confirmation token
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
     response = session.get(url, stream=True)
 
-    # Handle large file confirmation
+    # Extract confirmation token
+    token = None
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
-            url = f"https://drive.google.com/uc?export=download&confirm={value}&id={file_id}"
-            response = session.get(url, stream=True)
+            token = value
+            break
 
+    # Second request with confirmation token
+    if token:
+        url = f"https://drive.google.com/uc?export=download&confirm={token}&id={file_id}"
+        response = session.get(url, stream=True)
+
+    # Save file
     with open("similarity.pkl", "wb") as f:
-        for chunk in response.iter_content(32768):
+        for chunk in response.iter_content(chunk_size=32768):
             if chunk:
                 f.write(chunk)
+
+    # Verify file size
+    size = os.path.getsize("similarity.pkl")
+    if size < 1000000:  # Less than 1MB means it downloaded wrong
+        os.remove("similarity.pkl")
+        raise Exception(f"Download failed - got {size} bytes, expected ~176MB")
 
 def fetch_poster(movie_id):
     try:
