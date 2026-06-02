@@ -4,12 +4,25 @@ import streamlit as st
 import pandas as pd
 import requests
 import os
-import gdown
+import requests
 
 if not os.path.exists("similarity.pkl"):
     file_id = "14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
-    url = f"https://drive.google.com/uc?export=download&confirm=9iBg&id={file_id}"
-    gdown.download(url, "similarity.pkl", quiet=False, fuzzy=True)
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    session = requests.Session()
+    response = session.get(url, stream=True)
+
+    # Handle large file confirmation
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            url = f"https://drive.google.com/uc?export=download&confirm={value}&id={file_id}"
+            response = session.get(url, stream=True)
+
+    with open("similarity.pkl", "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
 
 def fetch_poster(movie_id):
     try:
