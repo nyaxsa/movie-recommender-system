@@ -3,6 +3,12 @@ import time
 import streamlit as st
 import pandas as pd
 import requests
+import os
+import gdown
+
+if not os.path.exists("similarity.pkl"):
+    url = "https://drive.google.com/uc?id=14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
+    gdown.download(url, "similarity.pkl", quiet=False)
 
 def fetch_poster(movie_id):
     try:
