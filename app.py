@@ -3,41 +3,25 @@ import time
 import streamlit as st
 import pandas as pd
 import requests
-import os
-import requests
+from huggingface_hub import hf_hub_download
 
-if not os.path.exists("similarity.pkl"):
-    file_id = "14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
+@st.cache_resource
+def load_similarity():
+    path = hf_hub_download(
+        repo_id="nyaxsa/similarity",
+        filename="similarity.pkl",
+        repo_type="dataset"
+    )
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
-    session = requests.Session()
+@st.cache_resource
+def load_movies():
+    movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
+    return pd.DataFrame(movies_dict)
 
-    # First request to get confirmation token
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    response = session.get(url, stream=True)
-
-    # Extract confirmation token
-    token = None
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            token = value
-            break
-
-    # Second request with confirmation token
-    if token:
-        url = f"https://drive.google.com/uc?export=download&confirm={token}&id={file_id}"
-        response = session.get(url, stream=True)
-
-    # Save file
-    with open("similarity.pkl", "wb") as f:
-        for chunk in response.iter_content(chunk_size=32768):
-            if chunk:
-                f.write(chunk)
-
-    # Verify file size
-    size = os.path.getsize("similarity.pkl")
-    if size < 1000000:  # Less than 1MB means it downloaded wrong
-        os.remove("similarity.pkl")
-        raise Exception(f"Download failed - got {size} bytes, expected ~176MB")
+similarity = load_similarity()
+movies = load_movies()
 
 def fetch_poster(movie_id):
     try:
@@ -57,27 +41,23 @@ def fetch_poster(movie_id):
 def recommend(movie):
     movie_index = movies[movies['title'] == movie].index[0]
     distances = similarity[movie_index]
-    movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:11]  # fetch top 10
+    movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:11]
 
     recommended_movies = []
     recommended_movies_posters = []
     for i in movies_list:
         movie_id = movies.iloc[i[0]]['movie_id']
         poster = fetch_poster(movie_id)
-        if poster:  # only add if poster exists
+        if poster:
             recommended_movies.append(movies.iloc[i[0]]['title'])
             recommended_movies_posters.append(poster)
-        if len(recommended_movies) == 5:  # stop at 5 valid ones
+        if len(recommended_movies) == 5:
             break
         time.sleep(0.3)
 
     return recommended_movies, recommended_movies_posters
 
 st.title("Movie Recommender System")
-
-movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
-movies = pd.DataFrame(movies_dict)
-similarity = pickle.load(open('similarity.pkl', 'rb'))
 
 selected_movie_name = st.selectbox(
     'Please select a Movie',
