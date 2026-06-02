@@ -7,8 +7,9 @@ import os
 import gdown
 
 if not os.path.exists("similarity.pkl"):
-    url = "https://drive.google.com/uc?id=14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
-    gdown.download(url, "similarity.pkl", quiet=False)
+    file_id = "14MD3TBIn3TfYfUuCCe-qYKLfhpo_s4II"
+    url = f"https://drive.google.com/uc?export=download&confirm=9iBg&id={file_id}"
+    gdown.download(url, "similarity.pkl", quiet=False, fuzzy=True)
 
 def fetch_poster(movie_id):
     try:
